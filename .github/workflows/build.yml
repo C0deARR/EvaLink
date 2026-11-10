@@ -1,0 +1,39 @@
+name: build
+on: [workflow_dispatch]
+env:
+  SB_TAG: v1.12.0
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack bundle
+        run: |
+          python3 - <<'PY'
+          import os, re
+          t = open('bundle.txt', encoding='utf-8').read()
+          for m in re.finditer(r'^=== (\S+)\n(.*?)(?=^=== |\Z)', t, re.S | re.M):
+              p, c = m.group(1), m.group(2)
+              os.makedirs(os.path.dirname(p) or '.', exist_ok=True)
+              open(p, 'w', encoding='utf-8').write(c)
+          PY
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.24" }
+      - name: Build libbox
+        run: |
+          git clone --depth 1 --branch "$SB_TAG" https://github.com/SagerNet/sing-box /tmp/sb
+          cd /tmp/sb
+          make lib_install
+          export PATH="$PATH:$(go env GOPATH)/bin"
+          make lib_android
+          mkdir -p "$GITHUB_WORKSPACE/app/libs"
+          cp libbox.aar "$GITHUB_WORKSPACE/app/libs/"
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: "8.9" }
+      - run: gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EvaLink-apk
+          path: app/build/outputs/apk/debug/*.apk
