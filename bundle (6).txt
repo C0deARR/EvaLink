@@ -1,0 +1,850 @@
+=== build.gradle.kts
+plugins {
+    id("com.android.application") version "8.5.2" apply false
+    id("org.jetbrains.kotlin.android") version "1.9.24" apply false
+}
+=== gradle.properties
+android.useAndroidX=true
+org.gradle.jvmargs=-Xmx3g
+=== settings.gradle.kts
+pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+rootProject.name = "EvaLink"
+include(":app")
+=== app/build.gradle.kts
+plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
+
+// постоянная подпись: тот же ключ при каждой сборке, поэтому APK ставится как обновление
+val ks = layout.buildDirectory.file("eva.p12").get().asFile
+if (!ks.exists()) { ks.parentFile.mkdirs(); ks.writeBytes(java.util.Base64.getMimeDecoder().decode(file("eva.p12.b64").readText())) }
+val run = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
+android {
+    namespace = "app.eva.vpn"
+    compileSdk = 34
+    defaultConfig {
+        applicationId = "app.eva.vpn"; minSdk = 24; targetSdk = 34; versionCode = run; versionName = "1.0.$run"
+        ndk { abiFilters += listOf("arm64-v8a") }
+    }
+    signingConfigs {
+        create("eva") { storeFile = ks; storePassword = "evalink123"; keyAlias = "eva"; keyPassword = "evalink123"; storeType = "pkcs12" }
+    }
+    buildTypes { getByName("debug") { signingConfig = signingConfigs.getByName("eva") } }
+    buildFeatures { compose = true }
+    composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
+    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+    kotlinOptions { jvmTarget = "17" }
+}
+dependencies {
+    implementation(files("libs/libbox.aar"))
+    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.activity:activity-compose:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+}
+=== app/eva.p12.b64
+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
+=== app/src/main/AndroidManifest.xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED"/>
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+    <application android:label="EvaLink" android:icon="@mipmap/ic_launcher"
+        android:theme="@style/T" android:usesCleartextTraffic="true">
+        <activity android:name=".MainActivity" android:exported="true"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <service android:name=".EvaVpn" android:exported="false"
+            android:foregroundServiceType="systemExempted"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter><action android:name="android.net.VpnService"/></intent-filter>
+        </service>
+        <receiver android:name=".ExpiryReceiver" android:exported="false"/>
+    </application>
+</manifest>
+=== app/src/main/java/app/eva/vpn/Cfg.kt
+package app.eva.vpn
+
+import org.json.JSONArray
+import org.json.JSONObject
+
+object Cfg {
+    fun build(proxy: JSONObject): JSONObject = JSONObject("""{
+      "log": {"level": "warn"},
+      "dns": {
+        "servers": [
+          {"tag": "r", "address": "https://1.1.1.1/dns-query", "detour": "proxy"},
+          {"tag": "l", "address": "local"}
+        ],
+        "rules": [{"outbound": "any", "server": "l"}]
+      },
+      "inbounds": [{"type": "tun", "address": ["172.19.0.1/30"], "mtu": 1500, "auto_route": false, "stack": "mixed"}],
+      "route": {"rules": [{"action": "sniff"}, {"protocol": "dns", "action": "hijack-dns"}], "final": "proxy"}
+    }""").put("outbounds", JSONArray().put(proxy).put(JSONObject().put("type", "direct").put("tag", "direct")))
+}
+=== app/src/main/java/app/eva/vpn/EvaVpn.kt
+package app.eva.vpn
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
+import android.graphics.drawable.Icon
+import android.net.VpnService
+import android.os.Build
+import io.nekohasekai.libbox.*
+import kotlinx.coroutines.flow.MutableStateFlow
+
+class EvaVpn : VpnService(), PlatformInterface {
+    companion object {
+        val running = MutableStateFlow(false)
+        val error = MutableStateFlow("")
+        const val CH = "eva_vpn"
+    }
+
+    private var box: BoxService? = null
+    private var apps: List<String> = emptyList()
+    private var mode = "except"
+
+    override fun onStartCommand(i: Intent?, f: Int, id: Int): Int {
+        if (i?.action == "stop") { shutdown(); return START_NOT_STICKY }
+        startForeground(1, notif(i?.getStringExtra("name") ?: ""))
+        val cfg = i?.getStringExtra("cfg")
+        if (cfg == null) { shutdown(); return START_NOT_STICKY }
+        apps = i.getStringArrayListExtra("apps") ?: emptyList()
+        mode = i.getStringExtra("mode") ?: "except"
+        Thread {
+            try {
+                stopBox()
+                error.value = ""
+                Libbox.setup(SetupOptions().apply {
+                    basePath = filesDir.path; workingPath = filesDir.path; tempPath = cacheDir.path
+                })
+                box = Libbox.newService(cfg, this).also { it.start() }
+                running.value = true
+            } catch (e: Throwable) {
+                error.value = e.message ?: e.toString()
+                shutdown()
+            }
+        }.start()
+        return START_NOT_STICKY
+    }
+
+    private fun notif(name: String): Notification {
+        val nm = getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= 26) nm.createNotificationChannel(NotificationChannel(CH, "VPN", NotificationManager.IMPORTANCE_LOW))
+        val stop = PendingIntent.getService(this, 0, Intent(this, EvaVpn::class.java).setAction("stop"),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val b = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CH) else Notification.Builder(this)
+        return b.setSmallIcon(android.R.drawable.ic_lock_lock).setContentTitle("EvaLink")
+            .setContentText(if (name.isEmpty()) "VPN активен" else name).setContentIntent(open).setOngoing(true)
+            .addAction(Notification.Action.Builder(Icon.createWithResource(this, android.R.drawable.ic_delete), "Отключить", stop).build())
+            .build()
+    }
+
+    private fun stopBox() {
+        try { box?.close() } catch (_: Throwable) {}
+        box = null
+    }
+
+    // закрываем в фоне; если ядро зависло, через 6 с принудительно завершаем процесс
+    private fun shutdown() {
+        running.value = false
+        Thread {
+            val killer = Thread {
+                try { Thread.sleep(6000); android.os.Process.killProcess(android.os.Process.myPid()) } catch (_: InterruptedException) {}
+            }
+            killer.start()
+            stopBox()
+            killer.interrupt()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }.start()
+    }
+
+    override fun onDestroy() { running.value = false; super.onDestroy() }
+    override fun onRevoke() { shutdown() }
+
+    override fun openTun(o: TunOptions?): Int {
+        val b = Builder().setSession("EvaLink").setMtu(1500)
+            .addAddress("172.19.0.1", 30).addRoute("0.0.0.0", 0).addDnsServer("172.19.0.2")
+        val list = apps.filter { it != packageName }
+        if (list.isNotEmpty()) {
+            if (mode == "only") try { b.addAllowedApplication(packageName) } catch (_: Exception) {}
+            for (p in list) try { if (mode == "only") b.addAllowedApplication(p) else b.addDisallowedApplication(p) } catch (_: Exception) {}
+        }
+        return b.establish()!!.detachFd()
+    }
+
+    override fun usePlatformAutoDetectInterfaceControl() = true
+    override fun autoDetectInterfaceControl(fd: Int) { protect(fd) }
+    override fun useProcFS() = false
+    override fun findConnectionOwner(a: Int, b: String?, c: Int, d: String?, e: Int): Int = 0
+    override fun packageNameByUid(uid: Int): String = ""
+    override fun uidByPackageName(n: String?): Int = 0
+    override fun startDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {}
+    override fun closeDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {}
+    override fun getInterfaces(): NetworkInterfaceIterator? = null
+    override fun underNetworkExtension() = false
+    override fun includeAllNetworks() = false
+    override fun clearDNSCache() {}
+    override fun readWIFIState(): WIFIState? = null
+    override fun systemCertificates(): StringIterator? = null
+    override fun sendNotification(n: io.nekohasekai.libbox.Notification?) {}
+    override fun localDNSTransport(): LocalDNSTransport? = null
+    override fun writeLog(message: String?) {}
+}
+=== app/src/main/java/app/eva/vpn/ExpiryReceiver.kt
+package app.eva.vpn
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+
+class ExpiryReceiver : BroadcastReceiver() {
+    override fun onReceive(c: Context, i: Intent) {
+        val nm = c.getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= 26) nm.createNotificationChannel(NotificationChannel("eva_alert", "Подписка", NotificationManager.IMPORTANCE_DEFAULT))
+        val open = PendingIntent.getActivity(c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val b = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(c, "eva_alert") else Notification.Builder(c)
+        nm.notify(2, b.setSmallIcon(android.R.drawable.ic_dialog_alert).setContentTitle("Подписка скоро закончится")
+            .setContentText("Осталось меньше суток").setContentIntent(open).setAutoCancel(true).build())
+    }
+}
+=== app/src/main/java/app/eva/vpn/MainActivity.kt
+package app.eva.vpn
+
+import android.Manifest
+import android.app.Activity
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
+import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.net.VpnService
+import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CutCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+
+private val Bg = Color(0xFF0B0714)
+private val Pur = Color(0xFF2E1A55)
+private val Grn = Color(0xFF7CFF3F)
+private val Org = Color(0xFFFF6A00)
+private val Red = Color(0xFFE5143A)
+private val Dim = Color(0xFF8F86AD)
+private val Mono = FontFamily.Monospace
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(b: Bundle?) { super.onCreate(b); setContent { Eva() } }
+}
+
+private fun left(ms: Long): String {
+    var s = ms / 1000; val d = s / 86400; s %= 86400; val h = s / 3600; s %= 3600
+    return "${d}д ${h}ч ${s / 60}м ${s % 60}с"
+}
+private fun gb(b: Long) = "%.1f".format(b / 1073741824.0)
+
+@Composable
+private fun Chip(t: String, mod: Modifier = Modifier, f: () -> Unit) =
+    Box(mod.border(1.dp, Grn, CutCornerShape(8.dp)).clickable { f() }.padding(horizontal = 6.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center) { Text(t, color = Grn, fontFamily = Mono, fontSize = 13.sp, maxLines = 1) }
+
+@Composable
+fun Apps(prefs: SharedPreferences, back: () -> Unit) {
+    val ctx = LocalContext.current
+    val pm = ctx.packageManager
+    val all = remember {
+        pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+            .map { it.activityInfo.packageName to it.loadLabel(pm).toString() }
+            .distinctBy { it.first }.filter { it.first != ctx.packageName }.sortedBy { it.second.lowercase() }
+    }
+    var sel by remember { mutableStateOf((prefs.getStringSet("apps", emptySet()) ?: emptySet()).toSet()) }
+    var mode by remember { mutableStateOf(prefs.getString("mode", "except") ?: "except") }
+    fun save() { prefs.edit().putStringSet("apps", sel).putString("mode", mode).apply() }
+    BackHandler { back() }
+    LazyColumn(Modifier.fillMaxSize().background(Bg), contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            Text("← Приложения", color = Grn, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 22.sp,
+                modifier = Modifier.clickable { back() })
+            Text("Изменения применятся при следующем подключении. Если ничего не выбрано, через VPN идёт всё.",
+                color = Dim, fontFamily = Mono, fontSize = 12.sp)
+        }
+        item {
+            Text((if (mode == "except") "● " else "○ ") + "Все, кроме выбранных", color = Org, fontFamily = Mono,
+                modifier = Modifier.fillMaxWidth().clickable { mode = "except"; save() }.padding(vertical = 8.dp))
+            Text((if (mode == "only") "● " else "○ ") + "Только выбранные", color = Org, fontFamily = Mono,
+                modifier = Modifier.fillMaxWidth().clickable { mode = "only"; save() }.padding(vertical = 8.dp))
+        }
+        items(all) { (pkg, label) ->
+            val on = pkg in sel
+            Row(Modifier.fillMaxWidth().border(1.dp, if (on) Grn else Pur, CutCornerShape(topEnd = 8.dp))
+                .clickable { sel = if (on) sel - pkg else sel + pkg; save() }.padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(label, color = Color.White, fontFamily = Mono, fontSize = 14.sp, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(if (on) "✓" else "", color = Grn, fontFamily = Mono)
+            }
+        }
+    }
+}
+
+@Composable
+fun Eva() {
+    val ctx = LocalContext.current
+    val prefs = remember { ctx.getSharedPreferences("eva", Context.MODE_PRIVATE) }
+    val scope = rememberCoroutineScope()
+    val hwid = remember { prefs.getString("hwid", null) ?: java.util.UUID.randomUUID().toString().also { prefs.edit().putString("hwid", it).apply() } }
+    val servers = remember { mutableStateListOf<Server>() }
+    var info by remember { mutableStateOf<Info?>(null) }
+    var url by remember { mutableStateOf(prefs.getString("url", "") ?: "") }
+    var sel by remember { mutableStateOf(prefs.getInt("sel", 0)) }
+    var msg by remember { mutableStateOf("") }
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    var pending by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var screen by remember { mutableStateOf(0) }
+    var rate by remember { mutableStateOf(0.0) }
+    var ip by remember { mutableStateOf("") }
+    var wifiSrv by remember { mutableStateOf(prefs.getString("wifi", "") ?: "") }
+    var mobSrv by remember { mutableStateOf(prefs.getString("mob", "") ?: "") }
+    var net by remember { mutableStateOf("") }
+    val on by EvaVpn.running.collectAsState()
+    val err by EvaVpn.error.collectAsState()
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (it.resultCode == Activity.RESULT_OK) pending?.invoke()
+    }
+    val notifPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
+    fun fill(body: String, hdr: String) {
+        servers.clear(); servers.addAll(Sub.parse(body)); info = Info.of(hdr)
+        if (sel >= servers.size) sel = 0
+        val i = info ?: return
+        val used = i.up + i.down; val t = System.currentTimeMillis()
+        val t0 = prefs.getLong("t0", 0L); val u0 = prefs.getLong("u0", 0L)
+        if (t0 == 0L || used < u0 || t - t0 > 7 * 86400000L) {
+            prefs.edit().putLong("t0", t).putLong("u0", used).apply(); rate = 0.0
+        } else if (t - t0 > 6 * 3600000L) rate = (used - u0) / ((t - t0) / 86400000.0)
+        val at = i.expire * 1000 - 86400000L
+        val am = ctx.getSystemService(AlarmManager::class.java)
+        val pi = PendingIntent.getBroadcast(ctx, 1, Intent(ctx, ExpiryReceiver::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        if (i.expire > 0 && at > t) am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi) else am.cancel(pi)
+    }
+    fun ping(manual: Boolean = false) = scope.launch {
+        if (EvaVpn.running.value) { if (manual) msg = "Пинг работает при выключенном VPN"; return@launch }
+        servers.indices.map { i ->
+            launch { val p = Sub.ping(servers[i]); if (i < servers.size) servers[i] = servers[i].copy(ping = p) }
+        }.joinAll()
+    }
+    fun refresh() = scope.launch {
+        if (url.isBlank()) return@launch
+        msg = "Обновляю…"
+        try {
+            val (b, h) = Sub.load(url, hwid)
+            prefs.edit().putString("body", b).putString("hdr", h).putString("url", url).apply()
+            fill(b, h)
+            val nb = servers.count { it.bad.isNotEmpty() }
+            msg = if (servers.isEmpty()) "Серверов 0: ${Parser.diag(b)}"
+            else "Серверов: ${servers.size}" + (if (nb > 0) ", XHTTP и др.: $nb" else "") + Parser.skipReport()
+            ping()
+        } catch (e: Exception) { msg = "Не удалось загрузить подписку: ${e.message}" }
+    }
+    fun start() {
+        val s = servers.getOrNull(sel) ?: return
+        if (s.bad.isNotEmpty()) { msg = "Транспорт ${s.bad} ядро sing-box не поддерживает, выбери другой сервер"; return }
+        val go = {
+            ContextCompat.startForegroundService(ctx, Intent(ctx, EvaVpn::class.java)
+                .putExtra("cfg", Cfg.build(s.out).toString()).putExtra("name", s.name)
+                .putExtra("mode", prefs.getString("mode", "except"))
+                .putStringArrayListExtra("apps", ArrayList(prefs.getStringSet("apps", emptySet()) ?: emptySet())))
+        }
+        val i = VpnService.prepare(ctx)
+        if (i == null) go() else { pending = go; launcher.launch(i) }
+    }
+    fun stop() { ctx.startService(Intent(ctx, EvaVpn::class.java).setAction("stop")) }
+    fun pick(i: Int) { sel = i; prefs.edit().putInt("sel", i).apply() }
+    fun bind(key: String) {
+        val n = servers.getOrNull(sel)?.name ?: return
+        val v = if ((if (key == "wifi") wifiSrv else mobSrv) == n) "" else n
+        prefs.edit().putString(key, v).apply()
+        if (key == "wifi") wifiSrv = v else mobSrv = v
+    }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= 33 && ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+            notifPerm.launch(Manifest.permission.POST_NOTIFICATIONS)
+        prefs.getString("body", null)?.let { fill(it, prefs.getString("hdr", "") ?: "") }
+        refresh()
+    }
+    LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(1000) } }
+    LaunchedEffect(on) {
+        if (on) { ip = "…"; delay(2500); ip = try { Sub.myIp() } catch (e: Exception) { "не удалось определить" } } else ip = ""
+    }
+    DisposableEffect(Unit) {
+        val cm = ctx.getSystemService(ConnectivityManager::class.java)
+        fun cur(): String {
+            val caps = cm.allNetworks.mapNotNull { cm.getNetworkCapabilities(it) }.filter {
+                it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) && !it.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+            }
+            return if (caps.any { it.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) }) "wifi"
+            else if (caps.any { it.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) }) "mob" else ""
+        }
+        net = cur()
+        val cb = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(n: Network) { net = cur() }
+            override fun onLost(n: Network) { net = cur() }
+            override fun onCapabilitiesChanged(n: Network, c: NetworkCapabilities) { net = cur() }
+        }
+        cm.registerNetworkCallback(NetworkRequest.Builder().build(), cb)
+        onDispose { cm.unregisterNetworkCallback(cb) }
+    }
+    LaunchedEffect(net, servers.size) {
+        val t = if (net == "wifi") wifiSrv else if (net == "mob") mobSrv else ""
+        val i = if (t.isEmpty()) -1 else servers.indexOfFirst { it.name == t }
+        if (i >= 0 && i != sel) { pick(i); if (on) start() }
+    }
+    BackHandler(screen == 1) { screen = 0 }
+
+    if (screen == 1) Apps(prefs) { screen = 0 } else LazyColumn(Modifier.fillMaxSize().background(Bg),
+        contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Text("EVA·LINK", color = Grn, fontFamily = Mono, fontWeight = FontWeight.Black, fontSize = 28.sp)
+            Text(if (on) "Синхронизация установлена" else "Ожидание соединения",
+                color = if (on) Grn else Dim, fontFamily = Mono, fontSize = 13.sp)
+            if (on && ip.isNotEmpty()) Text("IP: $ip", color = Grn, fontFamily = Mono, fontSize = 12.sp)
+        }
+        item {
+            Column(Modifier.fillMaxWidth().border(1.dp, Grn.copy(alpha = .5f), CutCornerShape(topEnd = 16.dp, bottomStart = 16.dp))
+                .background(Pur.copy(alpha = .35f), CutCornerShape(topEnd = 16.dp, bottomStart = 16.dp)).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val i = info
+                if (i == null || (i.expire == 0L && i.total == 0L && i.up + i.down == 0L)) {
+                    Text("Данных о подписке нет", color = Dim, fontFamily = Mono)
+                } else {
+                    val used = i.up + i.down
+                    if (i.expire > 0) {
+                        val r = i.expire * 1000 - now
+                        Text("До конца подписки", color = Dim, fontFamily = Mono, fontSize = 12.sp)
+                        Text(if (r > 0) left(r) else "Подписка истекла", color = if (r in 1..86399999L) Red else if (r > 0) Org else Red,
+                            fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+                    }
+                    if (i.total > 0) {
+                        LinearProgressIndicator(progress = { (used.toFloat() / i.total).coerceIn(0f, 1f) },
+                            color = Grn, trackColor = Pur, modifier = Modifier.fillMaxWidth().height(6.dp))
+                        Text("${gb(used)} / ${gb(i.total)} ГБ", color = Grn, fontFamily = Mono, fontSize = 13.sp)
+                        if (rate > 0) Text("≈ ${"%.1f".format(rate / 1073741824.0)} ГБ/сутки, хватит на ${((i.total - used) / rate).toInt()} д",
+                            color = Dim, fontFamily = Mono, fontSize = 12.sp)
+                    } else Text("${gb(used)} ГБ / ∞", color = Grn, fontFamily = Mono, fontSize = 13.sp)
+                }
+            }
+        }
+        item {
+            val c = if (on) Red else Org
+            Box(Modifier.fillMaxWidth().height(64.dp).background(c.copy(alpha = .15f), CutCornerShape(16.dp))
+                .border(2.dp, c, CutCornerShape(16.dp)).clickable { if (on) stop() else start() },
+                contentAlignment = Alignment.Center) {
+                Text(if (on) "Отключить" else "Подключить", color = c, fontFamily = Mono,
+                    fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Chip("Обновить", Modifier.weight(1f)) { refresh() }
+                Chip("Пинг", Modifier.weight(1f)) { ping(true) }
+                Chip("Авто", Modifier.weight(1f)) {
+                    val b = servers.withIndex().filter { it.value.bad.isEmpty() && it.value.ping in 1..8999 }.minByOrNull { it.value.ping }
+                    if (b == null) msg = "Сначала дождись пинга (при выключенном VPN)" else { pick(b.index); if (on) start() }
+                }
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Chip("★ Wi-Fi", Modifier.weight(1f)) { bind("wifi") }
+                Chip("★ Моб.", Modifier.weight(1f)) { bind("mob") }
+                Chip("Приложения", Modifier.weight(1f)) { screen = 1 }
+            }
+            if (wifiSrv.isNotEmpty() || mobSrv.isNotEmpty())
+                Text("Wi-Fi → ${wifiSrv.ifEmpty { "—" }}  ·  Моб. → ${mobSrv.ifEmpty { "—" }}", color = Dim, fontFamily = Mono, fontSize = 11.sp)
+        }
+        if (msg.isNotEmpty() || err.isNotEmpty()) item {
+            Text(if (err.isNotEmpty()) "Ошибка ядра: $err" else msg,
+                color = if (err.isNotEmpty()) Red else Dim, fontFamily = Mono, fontSize = 12.sp)
+        }
+        itemsIndexed(servers) { i, s ->
+            val on2 = i == sel
+            Row(Modifier.fillMaxWidth().background(if (on2) Pur.copy(alpha = .7f) else Color.Transparent, CutCornerShape(topEnd = 10.dp))
+                .border(1.dp, if (on2) Grn else Pur, CutCornerShape(topEnd = 10.dp))
+                .clickable { val ch = i != sel; pick(i); if (on && ch) start() }.padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(s.name, color = if (s.bad.isNotEmpty()) Dim else Color.White, fontFamily = Mono, fontSize = 14.sp, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(if (s.bad.isNotEmpty()) s.bad else if (s.ping == -1) "…" else if (s.ping == -2) "UDP" else if (s.ping >= 9999) "×" else "${s.ping} мс",
+                    color = if (s.bad.isNotEmpty() || s.ping < 0) Dim else if (s.ping >= 9999) Red else if (s.ping < 150) Grn else Org,
+                    fontFamily = Mono, fontSize = 14.sp)
+            }
+        }
+        item {
+            OutlinedTextField(value = url, onValueChange = { url = it }, singleLine = true,
+                label = { Text("Ссылка подписки") }, modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                    focusedBorderColor = Grn, unfocusedBorderColor = Dim, focusedLabelColor = Grn,
+                    unfocusedLabelColor = Dim, cursorColor = Grn))
+        }
+        item { Chip("Сохранить и обновить", Modifier.fillMaxWidth()) { refresh() } }
+    }
+}
+=== app/src/main/java/app/eva/vpn/Parser.kt
+package app.eva.vpn
+
+import android.util.Base64
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.URI
+import java.net.URLDecoder
+
+data class Server(val name: String, val host: String, val port: Int, val out: JSONObject, val ping: Int = -1, val udp: Boolean = false, val bad: String = "")
+
+object Parser {
+    private val skip = mutableListOf<String>()
+    fun skipReport() = if (skip.isEmpty()) "" else ", пропущено: " + skip.groupingBy { it }.eachCount().entries.joinToString { "${it.key}×${it.value}" }
+    private fun b64(s: String) = String(Base64.decode(s.trim().replace('-', '+').replace('_', '/'), Base64.DEFAULT))
+    private fun dec(s: String) = URLDecoder.decode(s, "UTF-8")
+
+    fun parse(l: String): Server? = try {
+        val s = l.trim()
+        when {
+            s.startsWith("vmess://") -> vmess(s)
+            s.startsWith("ss://") -> ss(s)
+            s.startsWith("hysteria2://") || s.startsWith("hy2://") -> hy2(s)
+            s.startsWith("vless://") || s.startsWith("trojan://") -> uri(s)
+            else -> null
+        }
+    } catch (e: Exception) { null }
+
+    fun diag(body: String): String {
+        val t = body.trim()
+        val text = (if (t.contains("://")) t else try { b64(t) } catch (e: Exception) { t }).trim()
+        val sch = Regex("(?m)^([a-zA-Z0-9]+)://").findAll(text).groupingBy { it.groupValues[1] }.eachCount()
+            .entries.joinToString { "${it.key}×${it.value}" }
+        return "ответ ${t.length} симв., ссылки: ${sch.ifEmpty { "нет" }}, начало: ${text.take(8)}"
+    }
+
+    private fun xray(c: JSONObject): Server? {
+        val outs = c.optJSONArray("outbounds") ?: return null
+        val list = (0 until outs.length()).map { outs.getJSONObject(it) }
+        val known = setOf("vless", "vmess", "trojan", "shadowsocks", "hysteria")
+        val ob = list.firstOrNull { it.optString("tag") == "proxy" && it.optString("protocol") in known }
+            ?: list.firstOrNull { it.optString("protocol") in known }
+            ?: run { skip += list.map { it.optString("protocol") }.filter { it.isNotEmpty() }.distinct().joinToString("/").ifEmpty { "нет outbound" }; return null }
+        val proto = ob.optString("protocol")
+        val st = ob.optJSONObject("streamSettings") ?: JSONObject()
+        val s = ob.optJSONObject("settings") ?: return null
+        val host: String; val port: Int; val o: JSONObject; var udp = false
+        when (proto) {
+            "vless", "vmess" -> {
+                val v = s.getJSONArray("vnext").getJSONObject(0)
+                val u = v.getJSONArray("users").getJSONObject(0)
+                host = v.getString("address"); port = v.getInt("port")
+                o = base(proto, host, port).put("uuid", u.getString("id"))
+                if (proto == "vless") u.optString("flow").takeIf { it.isNotEmpty() }?.let { o.put("flow", it) }
+                else o.put("security", u.optString("security").ifEmpty { "auto" }).put("alter_id", u.optInt("alterId", 0))
+            }
+            "trojan", "shadowsocks" -> {
+                val v = s.getJSONArray("servers").getJSONObject(0)
+                host = v.getString("address"); port = v.getInt("port")
+                o = base(proto, host, port).put("password", v.getString("password"))
+                if (proto == "shadowsocks") o.put("method", v.getString("method"))
+            }
+            "hysteria" -> {
+                host = s.getString("address"); port = s.getInt("port"); udp = true
+                o = base("hysteria2", host, port).put("password", st.optJSONObject("hysteriaSettings")?.optString("auth") ?: "")
+            }
+            else -> return null
+        }
+        val net = st.optString("network", "tcp"); val sec = st.optString("security", "none")
+        if (sec == "tls" || sec == "reality") {
+            val t = JSONObject().put("enabled", true)
+            val ts = st.optJSONObject(if (sec == "tls") "tlsSettings" else "realitySettings") ?: JSONObject()
+            ts.optString("serverName").takeIf { it.isNotEmpty() }?.let { t.put("server_name", it) }
+            if (ts.optBoolean("allowInsecure")) t.put("insecure", true)
+            ts.optJSONArray("alpn")?.let { t.put("alpn", it) }
+            if (proto != "hysteria") t.put("utls", JSONObject().put("enabled", true).put("fingerprint", ts.optString("fingerprint").ifEmpty { "chrome" }))
+            if (sec == "reality") t.put("reality", JSONObject().put("enabled", true)
+                .put("public_key", ts.optString("publicKey")).put("short_id", ts.optString("shortId")))
+            o.put("tls", t)
+        }
+        var bad = ""
+        when (net) {
+            "tcp", "raw", "hysteria" -> {}
+            "ws" -> {
+                val w = st.optJSONObject("wsSettings") ?: JSONObject()
+                val h = w.optJSONObject("headers")?.optString("Host")?.takeIf { it.isNotEmpty() }
+                    ?: w.optString("host").ifEmpty { host }
+                o.put("transport", JSONObject().put("type", "ws").put("path", w.optString("path").ifEmpty { "/" })
+                    .put("headers", JSONObject().put("Host", h)))
+            }
+            "grpc" -> o.put("transport", JSONObject().put("type", "grpc")
+                .put("service_name", st.optJSONObject("grpcSettings")?.optString("serviceName") ?: ""))
+            "httpupgrade" -> {
+                val w = st.optJSONObject("httpupgradeSettings") ?: JSONObject()
+                o.put("transport", JSONObject().put("type", "httpupgrade").put("path", w.optString("path").ifEmpty { "/" })
+                    .put("host", w.optString("host").ifEmpty { host }))
+            }
+            else -> bad = net.uppercase()
+        }
+        return Server(c.optString("remarks").ifEmpty { host }, host, port, o, udp = udp, bad = bad)
+    }
+
+    private fun jsonServers(t: String): List<Server> =
+        if (t.startsWith("[")) JSONArray(t).let { a -> (0 until a.length()).mapNotNull { i -> try { xray(a.getJSONObject(i)) } catch (e: Exception) { skip += "ошибка разбора"; null } } }
+        else listOfNotNull(xray(JSONObject(t)))
+
+    fun links(body: String): List<Server> {
+        val t = body.trim()
+        skip.clear()
+        if (t.startsWith("[") || t.startsWith("{")) return try { jsonServers(t) } catch (e: Exception) { emptyList() }
+        val text = if (t.contains("://")) t else try { b64(t) } catch (e: Exception) { t }
+        return text.lines().mapNotNull { parse(it) }
+    }
+
+    private fun base(type: String, host: String, port: Int) =
+        JSONObject().put("type", type).put("tag", "proxy").put("server", host).put("server_port", port)
+
+    private fun uri(link: String): Server {
+        val frag = link.substringAfter('#', "")
+        val u = URI(link.substringBefore('#').replace(" ", "%20"))
+        val p = (u.rawQuery ?: "").split("&").filter { it.contains("=") }
+            .associate { it.substringBefore("=") to dec(it.substringAfter("=")) }
+        val host = u.host.trim('[', ']')
+        val o = base(u.scheme, host, u.port)
+        if (u.scheme == "vless") {
+            o.put("uuid", u.userInfo)
+            p["flow"]?.takeIf { it.isNotEmpty() }?.let { o.put("flow", it) }
+        } else o.put("password", dec(u.userInfo))
+        tls(o, p); transport(o, p)
+        return Server(dec(frag.replace("+", "%2B")).ifEmpty { host }, host, u.port, o)
+    }
+
+    private fun tls(o: JSONObject, p: Map<String, String>) {
+        val sec = p["security"] ?: if (o.getString("type") == "trojan") "tls" else "none"
+        if (sec == "none") return
+        val t = JSONObject().put("enabled", true)
+        (p["sni"] ?: p["host"])?.takeIf { it.isNotEmpty() }?.let { t.put("server_name", it) }
+        if (p["allowInsecure"] == "1") t.put("insecure", true)
+        p["alpn"]?.takeIf { it.isNotEmpty() }?.let { t.put("alpn", JSONArray(it.split(","))) }
+        t.put("utls", JSONObject().put("enabled", true).put("fingerprint", p["fp"] ?: "chrome"))
+        if (sec == "reality") t.put("reality", JSONObject().put("enabled", true)
+            .put("public_key", p["pbk"] ?: "").put("short_id", p["sid"] ?: ""))
+        o.put("tls", t)
+    }
+
+    private fun transport(o: JSONObject, p: Map<String, String>) {
+        val host = p["host"]?.takeIf { it.isNotEmpty() } ?: o.getString("server")
+        when (p["type"]) {
+            "ws" -> o.put("transport", JSONObject().put("type", "ws").put("path", p["path"] ?: "/")
+                .put("headers", JSONObject().put("Host", host)))
+            "httpupgrade" -> o.put("transport", JSONObject().put("type", "httpupgrade")
+                .put("path", p["path"] ?: "/").put("host", host))
+            "grpc" -> o.put("transport", JSONObject().put("type", "grpc").put("service_name", p["serviceName"] ?: ""))
+        }
+    }
+
+    private fun vmess(link: String): Server {
+        val j = JSONObject(b64(link.removePrefix("vmess://")))
+        val host = j.getString("add"); val port = j.get("port").toString().toInt()
+        val o = base("vmess", host, port).put("uuid", j.getString("id"))
+            .put("security", j.optString("scy").ifEmpty { "auto" })
+            .put("alter_id", j.optString("aid", "0").toIntOrNull() ?: 0)
+        val p = mapOf(
+            "type" to j.optString("net"), "host" to j.optString("host"), "path" to j.optString("path"),
+            "security" to if (j.optString("tls") == "tls") "tls" else "none",
+            "sni" to j.optString("sni"), "fp" to j.optString("fp")
+        ).filterValues { it.isNotEmpty() }
+        tls(o, p); transport(o, p)
+        return Server(j.optString("ps", host), host, port, o)
+    }
+
+    private val hy = Regex("^(?:hysteria2|hy2)://([^@]+)@(\\[[^\\]]+\\]|[^:/?#]+):(\\d+)[,\\-\\d]*/?\\??([^#]*)#?(.*)$")
+
+    private fun hy2(link: String): Server {
+        val (pw, h, pt, qs, fr) = hy.matchEntire(link)!!.destructured
+        val host = h.trim('[', ']'); val port = pt.toInt()
+        val p = qs.split("&").filter { it.contains("=") }.associate { it.substringBefore("=") to dec(it.substringAfter("=")) }
+        val t = JSONObject().put("enabled", true)
+        (p["sni"] ?: p["peer"])?.takeIf { it.isNotEmpty() }?.let { t.put("server_name", it) }
+        if (p["insecure"] == "1") t.put("insecure", true)
+        p["alpn"]?.takeIf { it.isNotEmpty() }?.let { t.put("alpn", JSONArray(it.split(","))) }
+        val o = base("hysteria2", host, port).put("password", dec(pw)).put("tls", t)
+        p["obfs"]?.takeIf { it.isNotEmpty() }?.let {
+            o.put("obfs", JSONObject().put("type", it).put("password", p["obfs-password"] ?: ""))
+        }
+        return Server(dec(fr).ifEmpty { host }, host, port, o, udp = true)
+    }
+
+    private fun ss(link: String): Server {
+        val rest = link.removePrefix("ss://")
+        val name = dec(rest.substringAfter('#', ""))
+        var main = rest.substringBefore('#').substringBefore('?')
+        if (!main.contains('@')) main = b64(main)
+        val cred = main.substringBeforeLast('@'); val hp = main.substringAfterLast('@')
+        val mp = if (cred.contains(':')) dec(cred) else b64(cred)
+        val host = hp.substringBeforeLast(':').trim('[', ']'); val port = hp.substringAfterLast(':').toInt()
+        val o = base("shadowsocks", host, port).put("method", mp.substringBefore(':')).put("password", mp.substringAfter(':'))
+        return Server(name.ifEmpty { host }, host, port, o)
+    }
+}
+=== app/src/main/java/app/eva/vpn/Sub.kt
+package app.eva.vpn
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.InetSocketAddress
+import java.net.Socket
+import java.net.URL
+
+data class Info(val up: Long, val down: Long, val total: Long, val expire: Long) {
+    companion object {
+        fun of(h: String): Info? {
+            if (h.isBlank()) return null
+            val m = h.split(";").mapNotNull {
+                val p = it.trim().split("=")
+                if (p.size == 2) p[0] to (p[1].toDoubleOrNull()?.toLong() ?: 0L) else null
+            }.toMap()
+            return Info(m["upload"] ?: 0L, m["download"] ?: 0L, m["total"] ?: 0L, m["expire"] ?: 0L)
+        }
+    }
+}
+
+object Sub {
+    fun parse(body: String) = Parser.links(body)
+
+    suspend fun load(url: String, hwid: String): Pair<String, String> = withContext(Dispatchers.IO) {
+        val c = URL(url.trim()).openConnection() as HttpURLConnection
+        c.setRequestProperty("User-Agent", "Happ/2.7.0")
+        c.setRequestProperty("x-hwid", hwid)
+        c.setRequestProperty("x-device-os", "Android")
+        c.setRequestProperty("x-ver-os", android.os.Build.VERSION.RELEASE)
+        c.setRequestProperty("x-device-model", android.os.Build.MODEL)
+        c.connectTimeout = 15000; c.readTimeout = 15000
+        val body = c.inputStream.bufferedReader().readText()
+        body to (c.getHeaderField("subscription-userinfo") ?: "")
+    }
+
+    suspend fun myIp(): String = withContext(Dispatchers.IO) {
+        val c = URL("https://ipinfo.io/json").openConnection() as HttpURLConnection
+        c.connectTimeout = 8000; c.readTimeout = 8000
+        val j = JSONObject(c.inputStream.bufferedReader().readText())
+        "${j.optString("ip")} · ${j.optString("country")} · ${j.optString("org").take(26)}"
+    }
+
+    suspend fun ping(s: Server): Int = withContext(Dispatchers.IO) {
+        fun tcp(port: Int): Int = try {
+            val t = System.nanoTime()
+            Socket().use { it.connect(InetSocketAddress(s.host, port), 3000) }
+            maxOf(1, ((System.nanoTime() - t) / 1_000_000).toInt())
+        } catch (e: Exception) { -1 }
+        val r = tcp(s.port)
+        if (r > 0) r else if (s.udp) { val r2 = tcp(443); if (r2 > 0) r2 else -2 } else 9999
+    }
+}
+=== app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_bg"/>
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+    <monochrome android:drawable="@drawable/ic_launcher_foreground"/>
+</adaptive-icon>
+=== app/src/main/res/values/colors.xml
+<resources>
+    <color name="ic_bg">#2E1A55</color>
+</resources>
+=== app/src/main/res/values/styles.xml
+<resources>
+    <style name="T" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#0B0714</item>
+        <item name="android:statusBarColor">#0B0714</item>
+        <item name="android:navigationBarColor">#0B0714</item>
+    </style>
+</resources>
+=== app/src/main/res/mipmap-anydpi/ic_launcher.xml
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape android:shape="rectangle"><solid android:color="@color/ic_bg"/></shape></item>
+    <item android:drawable="@drawable/ic_launcher_foreground"/>
+</layer-list>
+=== app/src/main/res/drawable/ic_launcher_foreground.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:strokeColor="#FF6A00" android:strokeWidth="1.6" android:fillColor="#00000000"
+        android:pathData="M54,24 a30,30 0 1,0 0,60 a30,30 0 1,0 0,-60 Z"/>
+    <group android:rotation="0.0" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#7CFF3F" android:pathData="M54,25 C60.5,33 61,44 54,53 C47,44 47.5,33 54,25 Z"/>
+    </group>
+    <group android:rotation="51.43" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#7CFF3F" android:pathData="M54,25 C60.5,33 61,44 54,53 C47,44 47.5,33 54,25 Z"/>
+    </group>
+    <group android:rotation="102.86" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#7CFF3F" android:pathData="M54,25 C60.5,33 61,44 54,53 C47,44 47.5,33 54,25 Z"/>
+    </group>
+    <group android:rotation="154.29" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#7CFF3F" android:pathData="M54,25 C60.5,33 61,44 54,53 C47,44 47.5,33 54,25 Z"/>
+    </group>
+    <group android:rotation="205.71" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#7CFF3F" android:pathData="M54,25 C60.5,33 61,44 54,53 C47,44 47.5,33 54,25 Z"/>
+    </group>
+    <group android:rotation="257.14" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#7CFF3F" android:pathData="M54,25 C60.5,33 61,44 54,53 C47,44 47.5,33 54,25 Z"/>
+    </group>
+    <group android:rotation="308.57" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#7CFF3F" android:pathData="M54,25 C60.5,33 61,44 54,53 C47,44 47.5,33 54,25 Z"/>
+    </group>
+    <path android:fillColor="#FF6A00" android:pathData="M54,48.5 a5.5,5.5 0 1,0 0,11 a5.5,5.5 0 1,0 0,-11 Z"/>
+    <path android:fillColor="#2E1A55" android:pathData="M54,52 a2,2 0 1,0 0,4 a2,2 0 1,0 0,-4 Z"/>
+</vector>
